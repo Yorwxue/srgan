@@ -7,6 +7,7 @@ import numpy as np
 from time import localtime, strftime
 import logging, scipy
 import importlib
+from scipy import misc
 
 import tensorflow as tf
 slim = tf.contrib.slim
@@ -52,10 +53,14 @@ def train():
     tl.files.exists_or_mkdir(checkpoint_dir)
 
     ###====================== PRE-LOAD DATA ===========================###
-    train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False))
-    train_lr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.lr_img_path, regx='.*.png', printable=False))
-    valid_hr_img_list = sorted(tl.files.load_file_list(path=config.VALID.hr_img_path, regx='.*.png', printable=False))
-    valid_lr_img_list = sorted(tl.files.load_file_list(path=config.VALID.lr_img_path, regx='.*.png', printable=False))
+    # train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False))
+    # train_lr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.lr_img_path, regx='.*.png', printable=False))
+    # valid_hr_img_list = sorted(tl.files.load_file_list(path=config.VALID.hr_img_path, regx='.*.png', printable=False))
+    # valid_lr_img_list = sorted(tl.files.load_file_list(path=config.VALID.lr_img_path, regx='.*.png', printable=False))
+    train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.', printable=False))
+    train_lr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.lr_img_path, regx='.*.', printable=False))
+    valid_hr_img_list = sorted(tl.files.load_file_list(path=config.VALID.hr_img_path, regx='.*.', printable=False))
+    valid_lr_img_list = sorted(tl.files.load_file_list(path=config.VALID.lr_img_path, regx='.*.', printable=False))
 
     ## If your machine have enough memory, please pre-load the whole train set.
     # train_hr_imgs = tensorlayer.files.load_flickr25k_dataset(tag=None)
@@ -159,10 +164,10 @@ def train():
     print('sample HR sub-image:',sample_imgs_384.shape, sample_imgs_384.min(), sample_imgs_384.max())
     sample_imgs_96 = tl.prepro.threading_data(sample_imgs_384, fn=downsample_fn)
     print('sample LR sub-image:', sample_imgs_96.shape, sample_imgs_96.min(), sample_imgs_96.max())
-    tl.vis.save_images(sample_imgs_96, [ni, ni], save_dir_ginit+'/_train_sample_96.png')
-    tl.vis.save_images(sample_imgs_384, [ni, ni], save_dir_ginit+'/_train_sample_384.png')
-    tl.vis.save_images(sample_imgs_96, [ni, ni], save_dir_gan+'/_train_sample_96.png')
-    tl.vis.save_images(sample_imgs_384, [ni, ni], save_dir_gan+'/_train_sample_384.png')
+    tl.vis.save_images(sample_imgs_96, [ni, ni], os.path.join(save_dir_ginit, '_train_sample_96.png'))
+    tl.vis.save_images(sample_imgs_384, [ni, ni], os.path.join(save_dir_ginit, '_train_sample_384.png'))
+    tl.vis.save_images(sample_imgs_96, [ni, ni], os.path.join(save_dir_gan, '_train_sample_96.png'))
+    tl.vis.save_images(sample_imgs_384, [ni, ni], os.path.join(save_dir_gan, '_train_sample_384.png'))
 
     ###========================= initialize G ====================###
     ## fixed learning rate
@@ -201,11 +206,11 @@ def train():
         if (epoch != 0) and (epoch % 10 == 0):
             out = sess.run(net_g_test.outputs, {t_image: sample_imgs_96})#; print('gen sub-image:', out.shape, out.min(), out.max())
             print("[*] save images")
-            tl.vis.save_images(out, [ni, ni], save_dir_ginit+'/train_%d.png' % epoch)
+            tl.vis.save_images(out, [ni, ni], os.path.join(save_dir_ginit, 'train_%d.png' % epoch))
 
         ## save model
         if (epoch != 0) and (epoch % 10 == 0):
-            tl.files.save_npz(net_g.all_params, name=checkpoint_dir+'/g_{}_init.npz'.format(tl.global_flag['mode']), sess=sess)
+            tl.files.save_npz(net_g.all_params, name=os.path.join(checkpoint_dir, 'g_{}_init.npz'.format(tl.global_flag['mode'])), sess=sess)
 
     ###========================= train GAN (SRGAN) =========================###
     for epoch in range(0, n_epoch+1):
@@ -256,12 +261,12 @@ def train():
         if (epoch != 0) and (epoch % 10 == 0):
             out = sess.run(net_g_test.outputs, {t_image: sample_imgs_96})#; print('gen sub-image:', out.shape, out.min(), out.max())
             print("[*] save images")
-            tl.vis.save_images(out, [ni, ni], save_dir_gan+'/train_%d.png' % epoch)
+            tl.vis.save_images(out, [ni, ni], os.path.join(save_dir_gan, 'train_%d.png' % epoch))
 
         ## save model
         if (epoch != 0) and (epoch % 10 == 0):
-            tl.files.save_npz(net_g.all_params, name=checkpoint_dir+'/g_{}.npz'.format(tl.global_flag['mode']), sess=sess)
-            tl.files.save_npz(net_d.all_params, name=checkpoint_dir+'/d_{}.npz'.format(tl.global_flag['mode']), sess=sess)
+            tl.files.save_npz(net_g.all_params, name=os.path.join(checkpoint_dir, 'g_{}.npz'.format(tl.global_flag['mode'])), sess=sess)
+            tl.files.save_npz(net_d.all_params, name=os.path.join(checkpoint_dir, 'd_{}.npz'.format(tl.global_flag['mode'])), sess=sess)
 
 def evaluate():
     ## create folders to save result images
@@ -270,10 +275,10 @@ def evaluate():
     checkpoint_dir = "checkpoint"
 
     ###====================== PRE-LOAD DATA ===========================###
-    # train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False))
-    # train_lr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.lr_img_path, regx='.*.png', printable=False))
-    valid_hr_img_list = sorted(tl.files.load_file_list(path=config.VALID.hr_img_path, regx='.*.png', printable=False))
-    valid_lr_img_list = sorted(tl.files.load_file_list(path=config.VALID.lr_img_path, regx='.*.png', printable=False))
+    # train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.', printable=False))
+    # train_lr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.lr_img_path, regx='.*.', printable=False))
+    valid_hr_img_list = sorted(tl.files.load_file_list(path=config.VALID.hr_img_path, regx='.*.', printable=False))
+    valid_lr_img_list = sorted(tl.files.load_file_list(path=config.VALID.lr_img_path, regx='.*.', printable=False))
 
     ## If your machine have enough memory, please pre-load the whole train set.
     # train_hr_imgs = read_all_imgs(train_hr_img_list, path=config.TRAIN.hr_img_path, n_threads=32)
@@ -288,7 +293,7 @@ def evaluate():
     # exit()
 
     ###========================== DEFINE MODEL ============================###
-    imid = 10  # 0: 企鹅  81: 蝴蝶 53: 鸟  64: 古堡
+    imid = -1  # 0: 企鹅  81: 蝴蝶 53: 鸟  64: 古堡
     valid_lr_img = valid_lr_imgs[imid]
     valid_hr_img = valid_hr_imgs[imid]
         # valid_lr_img = get_imgs_fn('test.png', 'data2017/')  # if you want to test your own image
@@ -304,7 +309,7 @@ def evaluate():
     ###========================== RESTORE G =============================###
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
     tl.layers.initialize_global_variables(sess)
-    tl.files.load_and_assign_npz(sess=sess, name=checkpoint_dir+'/g_srgan.npz', network=net_g)
+    tl.files.load_and_assign_npz(sess=sess, name=os.path.join(checkpoint_dir, 'g_srgan.npz'), network=net_g)
 
     ###======================= EVALUATION =============================###
     start_time = time.time()
@@ -313,12 +318,12 @@ def evaluate():
 
     print("LR size: %s /  generated HR size: %s" % (size, out.shape)) # LR size: (339, 510, 3) /  gen HR size: (1, 1356, 2040, 3)
     print("[*] save images")
-    tl.vis.save_image(out[0], save_dir+'/valid_gen.png')
-    tl.vis.save_image(valid_lr_img, save_dir+'/valid_lr.png')
-    tl.vis.save_image(valid_hr_img, save_dir+'/valid_hr.png')
+    tl.vis.save_image(out[0], os.path.join(save_dir, 'valid_gen.png'))
+    tl.vis.save_image(valid_lr_img, os.path.join(save_dir, 'valid_lr.png'))
+    tl.vis.save_image(valid_hr_img, os.path.join(save_dir, 'valid_hr.png'))
 
-    out_bicu = scipy.misc.imresize(valid_lr_img, [size[0]*4, size[1]*4], interp='bicubic', mode=None)
-    tl.vis.save_image(out_bicu, save_dir+'/valid_bicubic.png')
+    out_bicu = misc.imresize(valid_lr_img, [size[0]*4, size[1]*4], interp='bicubic', mode=None)
+    tl.vis.save_image(out_bicu, os.path.join(save_dir, 'valid_bicubic.png'))
 
 if __name__ == '__main__':
     import argparse
